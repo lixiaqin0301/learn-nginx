@@ -1,3 +1,7 @@
 /Makefile
 /objs/
 /tmp/
+/.cache/
+/compile_commands.json
+/openresty/
+/prefix/
