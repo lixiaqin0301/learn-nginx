@@ -2,7 +2,8 @@
 set -euo pipefail
 sh_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
 cd "$sh_dir"
-git clean -ffdx
+# keep the in-tree modules/ directory (it is not committed to git yet)
+git clean -ffdx -e modules
 grep -q nginx /etc/group || groupadd -r nginx
 grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
 ./auto/configure --prefix="$sh_dir"/prefix \
@@ -26,6 +27,7 @@ grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
   --with-http_slice_module          \
   --with-http_json_module           \
   --with-http_stub_status_module    \
+  --add-module="$sh_dir"/modules/ngx_http_mytest_module \
   --with-cc-opt="-g -O0"            \
   --with-debug
 bear -- make -s -j"$(nproc)"
@@ -52,6 +54,10 @@ http {
         listen   127.0.0.1:8081;
         location / {
             proxy_pass  http://backend;
+        }
+
+        location = /mytest {
+            mytest;
         }
 
     }
