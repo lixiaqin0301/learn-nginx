@@ -1,0 +1,6 @@
+BasedOnStyle: WebKit
+ColumnLimit: 500
+PointerAlignment: Right
+BreakAfterReturnType: TopLevelDefinitions
+PackConstructorInitializers: CurrentLine
+SpaceBeforeCtorInitializerColon: false
