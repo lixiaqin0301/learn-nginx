@@ -33,6 +33,7 @@ grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
 bear -- make -s -j"$(nproc)"
 make install
 python3 clangd-index.py
+python3 clangd-headers.py
 while killall -q nginx; do
     sleep 1
 done
