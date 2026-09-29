@@ -57,7 +57,7 @@ http {
             proxy_pass  http://backend;
         }
 
-        location = /mytest {
+        location /mytest {
             mytest;
         }
 
