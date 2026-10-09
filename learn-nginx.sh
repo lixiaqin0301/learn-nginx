@@ -46,10 +46,16 @@ events { }
 http {
     include       mime.types;
     default_type  application/octet-stream;
+    error_log     logs/error.log notice;
     upstream backend {
         server   127.0.0.82:9082;
         server   127.0.0.83:9083;
         server   127.0.0.84:9084;
+    }
+    mytest_upstream my_backend {
+        server   127.0.0.82:9082;
+        server   127.0.0.83:9083;
+        server   127.0.0.84:9084 backup;
     }
     server {
         listen   127.0.0.1:8081;
@@ -57,25 +63,14 @@ http {
             proxy_pass  http://backend;
         }
         location /mytest {
-            mytest;
-            mytest_flag on;                      # ngx_conf_set_flag_slot
-            mytest_str hello_World9;             # ngx_conf_set_str_slot
-            mytest_str_array a;                  # ngx_conf_set_str_array_slot
-            mytest_str_array bb;
-            mytest_str_array ccc;
-            mytest_keyval k1 v1;                 # ngx_conf_set_keyval_slot
-            mytest_keyval k2 v2;
-            mytest_num 42;                       # ngx_conf_set_num_slot
-            mytest_size 1m;                      # ngx_conf_set_size_slot
-            mytest_off 2k;                       # ngx_conf_set_off_slot
-            mytest_msec 500ms;                   # ngx_conf_set_msec_slot
-            mytest_sec 30s;                      # ngx_conf_set_sec_slot
-            mytest_bufs 8 4096;                  # ngx_conf_set_bufs_slot
-            mytest_enum second;                  # ngx_conf_set_enum_slot
-            mytest_bitmask read delete;          # ngx_conf_set_bitmask_slot
-            mytest_path /tmp/mytest_cache 1 2;   # ngx_conf_set_path_slot
-            mytest_access user:rw group:r all:r; # ngx_conf_set_access_slot
-            mytest_custom foo=10 bar_baz=200;    # 自定义 set 回调
+            mytest_pass              my_backend;
+            mytest_connect_timeout   5s;
+            mytest_read_timeout      30s;
+            mytest_send_timeout      30s;
+            mytest_buffer_size       8k;
+            mytest_buffering         off;
+            mytest_request_buffering on;
+            mytest_next_upstream     error timeout invalid_header;
         }
     }
 }
