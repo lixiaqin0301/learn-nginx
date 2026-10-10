@@ -76,7 +76,6 @@ ngx_module_t ngx_http_mytest_module = { NGX_MODULE_V1, &ngx_http_mytest_module_c
 static void *
 ngx_http_mytest_create_loc_conf(ngx_conf_t *cf)
 {
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: create_loc_conf()");
     ngx_http_mytest_loc_conf_t *conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mytest_loc_conf_t));
     if (conf) {
         conf->upstream.local = NGX_CONF_UNSET_PTR;
@@ -100,7 +99,6 @@ ngx_http_mytest_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_mytest_loc_conf_t *prev = parent;
     ngx_http_mytest_loc_conf_t *conf = child;
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: merge_loc_conf()");
     ngx_conf_merge_ptr_value(conf->upstream.local, prev->upstream.local, NULL);
     ngx_conf_merge_value(conf->upstream.socket_keepalive, prev->upstream.socket_keepalive, 0);
     ngx_conf_merge_uint_value(conf->upstream.next_upstream_tries, prev->upstream.next_upstream_tries, 0);
@@ -196,7 +194,6 @@ ngx_http_mytest_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return rv;
     }
     if (uscf->servers->nelts == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "mytest_upstream \"%V\" 里没有 server", &value[1]);
         return NGX_CONF_ERROR;
     }
     return NGX_CONF_OK;
@@ -219,17 +216,14 @@ ngx_http_mytest_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u.no_port = 1;
     mlcf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
     if (mlcf->upstream.upstream == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "upstream \"%V\" 未通过 mytest_upstream 定义", &value[1]);
         return NGX_CONF_ERROR;
     }
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: mytest_pass -> upstream \"%V\"", &value[1]);
     return NGX_CONF_OK;
 }
 
 static ngx_int_t
 ngx_http_mytest_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 {
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: init_upstream() upstream=\"%V\"", &us->host);
     if (ngx_http_upstream_init_round_robin(cf, us) != NGX_OK) {
         return NGX_ERROR;
     }
@@ -240,7 +234,6 @@ ngx_http_mytest_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 static ngx_int_t
 ngx_http_mytest_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *us)
 {
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "mytest: init_peer() upstream=\"%V\"", &us->host);
     if (ngx_http_upstream_init_round_robin_peer(r, us) != NGX_OK) {
         return NGX_ERROR;
     }
@@ -258,7 +251,6 @@ ngx_http_mytest_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *u
 static ngx_int_t
 ngx_http_mytest_get_peer(ngx_peer_connection_t *pc, void *data)
 {
-    ngx_log_error(NGX_LOG_NOTICE, pc->log, 0, "mytest: peer.get() tries=%ui", pc->tries);
     if (ngx_http_mytest_rr_get) {
         return ngx_http_mytest_rr_get(pc, data);
     }
@@ -268,7 +260,6 @@ ngx_http_mytest_get_peer(ngx_peer_connection_t *pc, void *data)
 static void
 ngx_http_mytest_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state)
 {
-    ngx_log_error(NGX_LOG_NOTICE, pc->log, 0, "mytest: peer.free() state=0x%xi", state);
     if (ngx_http_mytest_rr_free) {
         ngx_http_mytest_rr_free(pc, data, state);
     }
@@ -277,7 +268,6 @@ ngx_http_mytest_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t stat
 static void
 ngx_http_mytest_notify_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t type)
 {
-    ngx_log_error(NGX_LOG_NOTICE, pc->log, 0, "mytest: peer.notify() type=%ui", type);
     if (ngx_http_mytest_rr_notify) {
         ngx_http_mytest_rr_notify(pc, data, type);
     }
@@ -370,7 +360,6 @@ ngx_http_mytest_process_header(ngx_http_request_t *r)
 {
     ngx_http_upstream_t *u = r->upstream;
     ngx_http_upstream_main_conf_t *umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "mytest: process_header() 已收到 %uz 字节", u->buffer.last - u->buffer.pos);
     u_char *last = u->buffer.last;
     u_char *p = NULL;
     for (p = u->buffer.pos; p < last; p++) {
@@ -466,10 +455,8 @@ status_found:
         p++;
         u->buffer.pos = p;
     }
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "mytest: process_header() 解析完成 status=%ui", status);
     return NGX_OK;
 invalid:
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "mytest: 无法解析 upstream 的响应");
     return NGX_HTTP_UPSTREAM_INVALID_HEADER;
 }
 
