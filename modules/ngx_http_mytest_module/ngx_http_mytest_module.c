@@ -1,4 +1,5 @@
 #include "ngx_hash.h"
+#include "ngx_string.h"
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
@@ -34,129 +35,43 @@ static ngx_int_t ngx_http_mytest_input_filter(void *data, ssize_t bytes);
 static ngx_int_t ngx_http_mytest_create_key(ngx_http_request_t *r);
 #endif
 
-static ngx_event_get_peer_pt    ngx_http_mytest_rr_get;
-static ngx_event_free_peer_pt   ngx_http_mytest_rr_free;
+static ngx_event_get_peer_pt ngx_http_mytest_rr_get;
+static ngx_event_free_peer_pt ngx_http_mytest_rr_free;
 static ngx_event_notify_peer_pt ngx_http_mytest_rr_notify;
 
-static ngx_conf_bitmask_t ngx_http_mytest_next_upstream_masks[] = {
-    { ngx_string("error"),          NGX_HTTP_UPSTREAM_FT_ERROR },
-    { ngx_string("timeout"),        NGX_HTTP_UPSTREAM_FT_TIMEOUT },
-    { ngx_string("invalid_header"), NGX_HTTP_UPSTREAM_FT_INVALID_HEADER },
-    { ngx_string("http_403"),       NGX_HTTP_UPSTREAM_FT_HTTP_403 },
-    { ngx_string("http_404"),       NGX_HTTP_UPSTREAM_FT_HTTP_404 },
-    { ngx_string("http_500"),       NGX_HTTP_UPSTREAM_FT_HTTP_500 },
-    { ngx_string("http_502"),       NGX_HTTP_UPSTREAM_FT_HTTP_502 },
-    { ngx_string("http_503"),       NGX_HTTP_UPSTREAM_FT_HTTP_503 },
-    { ngx_string("http_504"),       NGX_HTTP_UPSTREAM_FT_HTTP_504 },
-    { ngx_string("off"),            NGX_HTTP_UPSTREAM_FT_OFF },
-    { ngx_null_string,              0 }
-};
+static ngx_conf_bitmask_t ngx_http_mytest_next_upstream_masks[] = { { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR }, { ngx_string("timeout"), NGX_HTTP_UPSTREAM_FT_TIMEOUT }, { ngx_string("invalid_header"), NGX_HTTP_UPSTREAM_FT_INVALID_HEADER }, { ngx_string("http_403"), NGX_HTTP_UPSTREAM_FT_HTTP_403 }, { ngx_string("http_404"), NGX_HTTP_UPSTREAM_FT_HTTP_404 }, { ngx_string("http_500"), NGX_HTTP_UPSTREAM_FT_HTTP_500 }, { ngx_string("http_502"), NGX_HTTP_UPSTREAM_FT_HTTP_502 },
+    { ngx_string("http_503"), NGX_HTTP_UPSTREAM_FT_HTTP_503 }, { ngx_string("http_504"), NGX_HTTP_UPSTREAM_FT_HTTP_504 }, { ngx_string("off"), NGX_HTTP_UPSTREAM_FT_OFF }, { ngx_null_string, 0 } };
 
-static ngx_str_t ngx_http_mytest_hide_headers[] = {
-    ngx_null_string
-};
+static ngx_str_t ngx_http_mytest_hide_headers[] = { ngx_null_string };
 
-static ngx_command_t ngx_http_mytest_commands[] = {
-    {
-        ngx_string("mytest_upstream"),
-        NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
-        ngx_http_mytest_upstream,
-        NGX_HTTP_MAIN_CONF_OFFSET,
-        0,
-        NULL
-    },
-    {
-        ngx_string("mytest_pass"),
-        NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-        ngx_http_mytest_pass,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        0,
-        NULL
-    },
-    {
-        ngx_string("mytest_connect_timeout"),
-        NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-        ngx_conf_set_msec_slot,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_mytest_loc_conf_t, upstream.connect_timeout),
-        NULL
-    },
-    {
-        ngx_string("mytest_send_timeout"),
-        NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-        ngx_conf_set_msec_slot,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_mytest_loc_conf_t, upstream.send_timeout),
-        NULL
-    },
-    {
-        ngx_string("mytest_read_timeout"),
-        NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-        ngx_conf_set_msec_slot,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_mytest_loc_conf_t, upstream.read_timeout),
-        NULL
-    },
-    {
-        ngx_string("mytest_buffer_size"),
-        NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-        ngx_conf_set_size_slot,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_mytest_loc_conf_t, upstream.buffer_size),
-        &ngx_conf_size_nonzero_post
-    },
-    {
-        ngx_string("mytest_buffering"),
-        NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-        ngx_conf_set_flag_slot,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_mytest_loc_conf_t, upstream.buffering),
-        NULL
-    },
-    {
-        ngx_string("mytest_request_buffering"),
-        NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-        ngx_conf_set_flag_slot,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_mytest_loc_conf_t, upstream.request_buffering),
-        NULL
-    },
-    {
-        ngx_string("mytest_next_upstream"),
-        NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
-        ngx_conf_set_bitmask_slot,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_mytest_loc_conf_t, upstream.next_upstream),
-        &ngx_http_mytest_next_upstream_masks
-    },
-    ngx_null_command
-};
+static ngx_command_t ngx_http_mytest_commands[] = { { ngx_string("mytest_upstream"), NGX_HTTP_MAIN_CONF | NGX_CONF_BLOCK | NGX_CONF_TAKE1, ngx_http_mytest_upstream, NGX_HTTP_MAIN_CONF_OFFSET, 0, NULL }, { ngx_string("mytest_pass"), NGX_HTTP_LOC_CONF | NGX_HTTP_LIF_CONF | NGX_CONF_TAKE1, ngx_http_mytest_pass, NGX_HTTP_LOC_CONF_OFFSET, 0, NULL },
+    { ngx_string("mytest_connect_timeout"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1, ngx_conf_set_msec_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mytest_loc_conf_t, upstream.connect_timeout), NULL }, { ngx_string("mytest_send_timeout"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1, ngx_conf_set_msec_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mytest_loc_conf_t, upstream.send_timeout), NULL },
+    { ngx_string("mytest_read_timeout"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1, ngx_conf_set_msec_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mytest_loc_conf_t, upstream.read_timeout), NULL }, { ngx_string("mytest_buffer_size"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1, ngx_conf_set_size_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mytest_loc_conf_t, upstream.buffer_size), &ngx_conf_size_nonzero_post },
+    { ngx_string("mytest_buffering"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_FLAG, ngx_conf_set_flag_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mytest_loc_conf_t, upstream.buffering), NULL }, { ngx_string("mytest_request_buffering"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_FLAG, ngx_conf_set_flag_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mytest_loc_conf_t, upstream.request_buffering), NULL },
+    { ngx_string("mytest_next_upstream"), NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_CONF_1MORE, ngx_conf_set_bitmask_slot, NGX_HTTP_LOC_CONF_OFFSET, offsetof(ngx_http_mytest_loc_conf_t, upstream.next_upstream), &ngx_http_mytest_next_upstream_masks }, ngx_null_command };
 
 static ngx_http_module_t ngx_http_mytest_module_ctx = {
-    NULL,  /* preconfiguration */
-    NULL,  /* postconfiguration */
-    NULL,  /* create main configuration */
-    NULL,  /* init main configuration */
-    NULL,  /* create server configuration */
-    NULL,  /* merge server configuration */
-    ngx_http_mytest_create_loc_conf,   /* create location configuration */
-    ngx_http_mytest_merge_loc_conf     /* merge location configuration */
+    NULL, /* preconfiguration */
+    NULL, /* postconfiguration */
+    NULL, /* create main configuration */
+    NULL, /* init main configuration */
+    NULL, /* create server configuration */
+    NULL, /* merge server configuration */
+    ngx_http_mytest_create_loc_conf, /* create location configuration */
+    ngx_http_mytest_merge_loc_conf /* merge location configuration */
 };
 
-ngx_module_t ngx_http_mytest_module = {
-    NGX_MODULE_V1,
-    &ngx_http_mytest_module_ctx,  /* module context */
-    ngx_http_mytest_commands,     /* module directives */
-    NGX_HTTP_MODULE,              /* module type */
-    NULL,                         /* init master */
-    NULL,                         /* init module */
-    NULL,                         /* init process */
-    NULL,                         /* init thread */
-    NULL,                         /* exit thread */
-    NULL,                         /* exit process */
-    NULL,                         /* exit master */
-    NGX_MODULE_V1_PADDING
-};
+ngx_module_t ngx_http_mytest_module = { NGX_MODULE_V1, &ngx_http_mytest_module_ctx, /* module context */
+    ngx_http_mytest_commands, /* module directives */
+    NGX_HTTP_MODULE, /* module type */
+    NULL, /* init master */
+    NULL, /* init module */
+    NULL, /* init process */
+    NULL, /* init thread */
+    NULL, /* exit thread */
+    NULL, /* exit process */
+    NULL, /* exit master */
+    NGX_MODULE_V1_PADDING };
 
 static void *
 ngx_http_mytest_create_loc_conf(ngx_conf_t *cf)
@@ -287,7 +202,6 @@ ngx_http_mytest_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     return NGX_CONF_OK;
 }
 
-
 static char *
 ngx_http_mytest_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -413,22 +327,27 @@ ngx_http_mytest_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_mytest_create_request(ngx_http_request_t *r)
 {
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0, "mytest: create_request() uri=\"%V\"", &r->unparsed_uri);
-    ngx_str_t uri = r->unparsed_uri.len ? r->unparsed_uri : r->uri;
-    if (uri.len == 0) {
-        ngx_str_set(&uri, "/");
+    size_t len = 0;
+    ngx_str_t uri = ngx_string("/");
+    if (r->unparsed_uri.len) {
+        uri = r->unparsed_uri;
+    } else if (r->uri.len) {
+        uri = r->uri;
     }
-    ngx_str_t host = ngx_null_string;
+    len += sizeof("GET ") - 1 + uri.len + sizeof(" HTTP/1.1\r\n") - 1;
+    ngx_str_t host = ngx_string("localhost");
     if (r->headers_in.server.len) {
         host = r->headers_in.server;
-    } else {
-        ngx_str_set(&host, "localhost");
     }
-    size_t len = sizeof("GET ") - 1 + uri.len + sizeof(" HTTP/1.0\r\n") - 1 + sizeof("Host: ") - 1 + host.len + sizeof("\r\n") - 1 + sizeof("Connection: close\r\n") - 1 + sizeof("\r\n") - 1;
+    len += sizeof("Host: ") - 1 + host.len + sizeof("\r\n") - 1;
+    len += sizeof("\r\n") - 1;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, len);
     if (b == NULL) {
         return NGX_ERROR;
     }
+    b->last = ngx_slprintf(b->last, b->end, "GET %V HTTP/1.1\r\n", &uri);
+    b->last = ngx_slprintf(b->last, b->end, "Host: %V\r\n", &host);
+    b->last = ngx_cpymem(b->last, "\r\n", sizeof("\r\n") - 1);
     ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
     if (cl == NULL) {
         return NGX_ERROR;
@@ -436,14 +355,6 @@ ngx_http_mytest_create_request(ngx_http_request_t *r)
     cl->buf = b;
     cl->next = NULL;
     r->upstream->request_bufs = cl;
-    b->last = ngx_cpymem(b->last, "GET ", sizeof("GET ") - 1);
-    b->last = ngx_copy(b->last, uri.data, uri.len);
-    b->last = ngx_cpymem(b->last, " HTTP/1.0\r\n", sizeof(" HTTP/1.0\r\n") - 1);
-    b->last = ngx_cpymem(b->last, "Host: ", sizeof("Host: ") - 1);
-    b->last = ngx_copy(b->last, host.data, host.len);
-    b->last = ngx_cpymem(b->last, "\r\n", sizeof("\r\n") - 1);
-    b->last = ngx_cpymem(b->last, "Connection: close\r\n", sizeof("Connection: close\r\n") - 1);
-    b->last = ngx_cpymem(b->last, "\r\n", sizeof("\r\n") - 1);
     return NGX_OK;
 }
 
