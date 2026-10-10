@@ -4,14 +4,6 @@
 #include <ngx_http.h>
 
 typedef struct {
-    ngx_uint_t dummy;
-} ngx_http_mytest_main_conf_t;
-
-typedef struct {
-    ngx_uint_t dummy;
-} ngx_http_mytest_srv_conf_t;
-
-typedef struct {
     ngx_http_upstream_conf_t upstream;
 } ngx_http_mytest_loc_conf_t;
 
@@ -20,21 +12,8 @@ typedef struct {
 } ngx_http_mytest_ctx_t;
 
 static ngx_int_t ngx_http_mytest_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_mytest_preconfiguration(ngx_conf_t *cf);
-static ngx_int_t ngx_http_mytest_postconfiguration(ngx_conf_t *cf);
-static void *ngx_http_mytest_create_main_conf(ngx_conf_t *cf);
-static char *ngx_http_mytest_init_main_conf(ngx_conf_t *cf, void *conf);
-static void *ngx_http_mytest_create_srv_conf(ngx_conf_t *cf);
-static char *ngx_http_mytest_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child);
 static void *ngx_http_mytest_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_mytest_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
-static ngx_int_t ngx_http_mytest_init_master(ngx_log_t *log);
-static ngx_int_t ngx_http_mytest_init_module(ngx_cycle_t *cycle);
-static ngx_int_t ngx_http_mytest_init_process(ngx_cycle_t *cycle);
-static ngx_int_t ngx_http_mytest_init_thread(ngx_cycle_t *cycle);
-static void ngx_http_mytest_exit_thread(ngx_cycle_t *cycle);
-static void ngx_http_mytest_exit_process(ngx_cycle_t *cycle);
-static void ngx_http_mytest_exit_master(ngx_cycle_t *cycle);
 static char *ngx_http_mytest_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_mytest_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_mytest_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us);
@@ -154,12 +133,12 @@ static ngx_command_t ngx_http_mytest_commands[] = {
 };
 
 static ngx_http_module_t ngx_http_mytest_module_ctx = {
-    ngx_http_mytest_preconfiguration,  /* preconfiguration */
-    ngx_http_mytest_postconfiguration, /* postconfiguration */
-    ngx_http_mytest_create_main_conf,  /* create main configuration */
-    ngx_http_mytest_init_main_conf,    /* init main configuration */
-    ngx_http_mytest_create_srv_conf,   /* create server configuration */
-    ngx_http_mytest_merge_srv_conf,    /* merge server configuration */
+    NULL,  /* preconfiguration */
+    NULL,  /* postconfiguration */
+    NULL,  /* create main configuration */
+    NULL,  /* init main configuration */
+    NULL,  /* create server configuration */
+    NULL,  /* merge server configuration */
     ngx_http_mytest_create_loc_conf,   /* create location configuration */
     ngx_http_mytest_merge_loc_conf     /* merge location configuration */
 };
@@ -169,105 +148,15 @@ ngx_module_t ngx_http_mytest_module = {
     &ngx_http_mytest_module_ctx,  /* module context */
     ngx_http_mytest_commands,     /* module directives */
     NGX_HTTP_MODULE,              /* module type */
-    ngx_http_mytest_init_master,  /* init master */
-    ngx_http_mytest_init_module,  /* init module */
-    ngx_http_mytest_init_process, /* init process */
-    ngx_http_mytest_init_thread,  /* init thread */
-    ngx_http_mytest_exit_thread,  /* exit thread */
-    ngx_http_mytest_exit_process, /* exit process */
-    ngx_http_mytest_exit_master,  /* exit master */
+    NULL,                         /* init master */
+    NULL,                         /* init module */
+    NULL,                         /* init process */
+    NULL,                         /* init thread */
+    NULL,                         /* exit thread */
+    NULL,                         /* exit process */
+    NULL,                         /* exit master */
     NGX_MODULE_V1_PADDING
 };
-
-static ngx_int_t
-ngx_http_mytest_init_master(ngx_log_t *log)
-{
-    ngx_log_error(NGX_LOG_NOTICE, log, 0, "mytest: init_master()");
-    return NGX_OK;
-}
-
-static ngx_int_t
-ngx_http_mytest_init_module(ngx_cycle_t *cycle)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "mytest: init_module()");
-    return NGX_OK;
-}
-
-static ngx_int_t
-ngx_http_mytest_init_process(ngx_cycle_t *cycle)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "mytest: init_process()");
-    return NGX_OK;
-}
-
-static ngx_int_t
-ngx_http_mytest_init_thread(ngx_cycle_t *cycle)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "mytest: init_thread()");
-    return NGX_OK;
-}
-
-static void
-ngx_http_mytest_exit_thread(ngx_cycle_t *cycle)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "mytest: exit_thread()");
-}
-
-static void
-ngx_http_mytest_exit_process(ngx_cycle_t *cycle)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "mytest: exit_process()");
-}
-
-static void
-ngx_http_mytest_exit_master(ngx_cycle_t *cycle)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "mytest: exit_master()");
-}
-
-static ngx_int_t
-ngx_http_mytest_preconfiguration(ngx_conf_t *cf)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: preconfiguration()");
-    return NGX_OK;
-}
-
-static ngx_int_t
-ngx_http_mytest_postconfiguration(ngx_conf_t *cf)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: postconfiguration()");
-    return NGX_OK;
-}
-
-static void *
-ngx_http_mytest_create_main_conf(ngx_conf_t *cf)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: create_main_conf()");
-    ngx_http_mytest_main_conf_t *conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mytest_main_conf_t));
-    return conf;
-}
-
-static char *
-ngx_http_mytest_init_main_conf(ngx_conf_t *cf, void *conf)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: init_main_conf()");
-    return NGX_CONF_OK;
-}
-
-static void *
-ngx_http_mytest_create_srv_conf(ngx_conf_t *cf)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: create_srv_conf()");
-    ngx_http_mytest_srv_conf_t *conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_mytest_srv_conf_t));
-    return conf;
-}
-
-static char *
-ngx_http_mytest_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
-{
-    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0, "mytest: merge_srv_conf()");
-    return NGX_CONF_OK;
-}
 
 static void *
 ngx_http_mytest_create_loc_conf(ngx_conf_t *cf)
