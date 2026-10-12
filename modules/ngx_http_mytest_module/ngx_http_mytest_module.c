@@ -359,7 +359,6 @@ static ngx_int_t
 ngx_http_mytest_process_header(ngx_http_request_t *r)
 {
     ngx_http_upstream_t *u = r->upstream;
-    ngx_http_upstream_main_conf_t *umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
     u_char *last = u->buffer.last;
     u_char *p = NULL;
     for (p = u->buffer.pos; p < last; p++) {
@@ -446,6 +445,7 @@ status_found:
             return NGX_ERROR;
         }
         ngx_strlow(h->lowcase_key, key.data, key.len);
+        ngx_http_upstream_main_conf_t *umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
         ngx_http_upstream_header_t *hh = ngx_hash_find(&umcf->headers_in_hash, h->hash, h->lowcase_key, h->key.len);
         if (hh) {
             if (hh->handler(r, h, hh->offset) != NGX_OK) {
