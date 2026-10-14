@@ -2,7 +2,6 @@
 set -euo pipefail
 sh_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
 cd "$sh_dir"
-# keep the in-tree modules/ directory (it is not committed to git yet)
 git clean -ffdx -e modules
 grep -q nginx /etc/group || groupadd -r nginx
 grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
@@ -52,25 +51,16 @@ http {
         server   127.0.0.83:9083;
         server   127.0.0.84:9084;
     }
-    mytest_upstream my_backend {
-        server   127.0.0.82:9082;
-        server   127.0.0.83:9083;
-        server   127.0.0.84:9084 backup;
-    }
     server {
         listen   127.0.0.1:8081;
         location / {
             proxy_pass  http://backend;
         }
-        location /mytest {
-            mytest_pass              my_backend;
-            mytest_connect_timeout   5s;
-            mytest_read_timeout      30s;
-            mytest_send_timeout      30s;
-            mytest_buffer_size       8k;
-            mytest_buffering         off;
-            mytest_request_buffering on;
-            mytest_next_upstream     error timeout invalid_header;
+        location /query {
+            mytest;
+        }
+        location /mytest/ {
+            proxy_pass  http://backend;
         }
     }
 }
