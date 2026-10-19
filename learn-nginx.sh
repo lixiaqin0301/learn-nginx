@@ -56,11 +56,9 @@ http {
         location / {
             proxy_pass  http://backend;
         }
-        location /query {
-            mytest;
-        }
-        location /mytest/ {
-            proxy_pass  http://backend;
+        location /mytest {
+            mytest      on;
+            proxy_pass  http://backend/;
         }
     }
 }
