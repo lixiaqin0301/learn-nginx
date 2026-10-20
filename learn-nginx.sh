@@ -56,10 +56,6 @@ http {
         location / {
             proxy_pass  http://backend;
         }
-        location /mytest {
-            mytest      on;
-            proxy_pass  http://backend/;
-        }
     }
 }
 EOF
