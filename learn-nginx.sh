@@ -27,8 +27,7 @@ grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
   --with-http_json_module           \
   --with-http_stub_status_module    \
   --add-module="$sh_dir"/modules/ngx_http_mytest_module \
-  --with-cc-opt="-g -O0"            \
-  --with-debug
+  --with-cc-opt="-g -O0"
 bear -- make -s -j"$(nproc)"
 make install
 python3 clangd-headers.py
