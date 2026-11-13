@@ -2,7 +2,7 @@
 set -euo pipefail
 sh_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
 cd "$sh_dir"
-git clean -ffdx -e modules
+git clean -ffdx -e /src/njs
 grep -q nginx /etc/group || groupadd -r nginx
 grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
 ./auto/configure --prefix="$sh_dir"/prefix \
@@ -26,7 +26,9 @@ grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
   --with-http_slice_module          \
   --with-http_json_module           \
   --with-http_stub_status_module    \
+  --with-stream                     \
   --add-module="$sh_dir"/modules/ngx_http_mytest_module \
+  --add-module="$sh_dir"/src/njs/nginx \
   --with-cc-opt="-g -O0"
 bear -- make -s -j"$(nproc)"
 make install
@@ -38,6 +40,14 @@ done
 while killall -q openresty; do
     sleep 1
 done
+cat > prefix/conf/http.js << 'EOF'
+async function fetchDemo(r) {
+    let res = await ngx.fetch("http://127.0.0.82:9082/");
+    r.return(200, "upstream status: " + res.status + "\n" + await res.text());
+}
+
+export default { fetchDemo };
+EOF
 cat > prefix/conf/nginx.conf << 'EOF'
 user nginx;
 events { }
@@ -45,6 +55,7 @@ http {
     include       mime.types;
     default_type  application/octet-stream;
     error_log     logs/error.log notice;
+    js_import     demo from http.js;
     upstream backend {
         server   127.0.0.82:9082;
         server   127.0.0.83:9083;
@@ -52,6 +63,9 @@ http {
     }
     server {
         listen   127.0.0.1:8081;
+        location /fetch {
+            js_content  demo.fetchDemo;
+        }
         location / {
             proxy_pass  http://backend;
         }
@@ -66,4 +80,5 @@ mkdir openresty/logs
 chown -R openresty:openresty openresty
 openresty -p "$sh_dir/openresty"
 sleep 1
+echo "njs: $(curl -fsS http://127.0.0.1:8081/fetch)"
 ps u -C nginx,openresty
