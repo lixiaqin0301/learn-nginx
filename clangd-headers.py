@@ -162,7 +162,7 @@ def main():
 
     cdb = json.load(cdb_path.open())
     # 丢掉上一次生成的头文件条目，保证幂等
-    c_sources = [e for e in cdb if not e["file"].endswith(".h")]
+    c_sources = [e for e in cdb if not e["file"].endswith(".h") and os.path.isfile(e["file"])]
     dropped = len(cdb) - len(c_sources)
 
     inc_dirs = include_dirs(c_sources)

@@ -2,7 +2,7 @@
 set -euo pipefail
 sh_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
 cd "$sh_dir"
-git clean -ffdx -e /src/njs
+git clean -ffdx -e /src/njs -e /src/openssl
 grep -q nginx /etc/group || groupadd -r nginx
 grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
 ./auto/configure --prefix="$sh_dir"/prefix \
@@ -29,9 +29,9 @@ grep -q nginx /etc/passwd || useradd -g nginx -M -r nginx
   --with-stream                     \
   --add-module="$sh_dir"/modules/ngx_http_mytest_module \
   --add-module="$sh_dir"/src/njs/nginx \
+  --with-openssl="$sh_dir"/src/openssl \
   --with-cc-opt="-g -O0"
-bear -- make -s -j"$(nproc)"
-make install
+bear -- make -s -j"$(nproc)" install
 python3 clangd-headers.py
 python3 clangd-index.py
 while killall -q nginx; do
